@@ -1,0 +1,3 @@
+MaximumRed: 12
+MaximumBlue: 14
+MaximumGreen: 13
