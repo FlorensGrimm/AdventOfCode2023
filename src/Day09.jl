@@ -150,3 +150,4 @@ function main(day::Day09{SecondPart{T}}) where {T<:AbstractString}
     Int(result)
 end
 
+nothing
