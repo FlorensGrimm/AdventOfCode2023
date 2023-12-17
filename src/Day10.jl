@@ -38,6 +38,11 @@ end
     right::Tuple{Int64,Int64} = (1, 0)
 end
 
+struct MazeResult
+    direction::Tuple{Int64,Int64}
+    prevs::Vector{Tuple{Int64,Int64,Int64}}
+end
+
 """
 Allows to iterate through the four different starting directions.
 """
@@ -238,10 +243,11 @@ The `move!` function is specialised on the type of pipe encountered,
 setting the `Position` variable to the next field, following the direction
 of the pipe.
 """
-function count_loop(pos, pipes)
-    result = []
+function count_loop(pos::Position, pipes::AbstractArray{Pipe,2})
+    result = MazeResult[]
     run = deepcopy(pos)
     for direction in Start()
+
         move!(run, direction)
         if any([run.currentx, run.currenty] .== 0)
             continue
@@ -255,7 +261,11 @@ function count_loop(pos, pipes)
             end
             move!(run, pipes[run])
         end
-        run.steps != -1 && push!(result, (direction, run.prevs))
+        if run.steps != -1
+            mazeresult = MazeResult(direction, run.prevs)
+            push!(result, mazeresult)
+        end
+
         run = deepcopy(pos)
     end
     result
@@ -267,16 +277,17 @@ Replaces the start pipe by the correct pipe type
 and creates the vectors for the x- any y-coordinates
 of the main loop pipes.
 """
-function prepare_expanded_pipes!(pipes, result)
-    path1, path2 = result
-    points = path2[2]
-    dr1 = path1[1]
-    dr2 = path2[1]
+function prepare_expanded_pipes!(pipes::AbstractArray{Pipe,2},
+    result::AbstractVector{MazeResult})
+    mazeresult1, mazeresult2 = result
+    points = mazeresult2.prevs
+    dr1 = mazeresult1.direction
+    dr2 = mazeresult2.direction
     entry1 = DIRECTIONS[dr1]
     entry2 = DIRECTIONS[dr2]
-    _, posx, posy = path1[2][1]
-    xs = [point[2] for point in points]
-    ys = [point[3] for point in points]
+    _, posx, posy = mazeresult1.prevs[1]
+    xs = [point[2] for point in points]::Vector{Int64}
+    ys = [point[3] for point in points]::Vector{Int64}
     pipes[xs[1], ys[1]] = Pipe(entry1, entry2, posx, posy)
 
     pipes, xs, ys
@@ -288,7 +299,7 @@ Stop type pipes if the field corresponds to a real field in the normal
 pipe array.
 Otherwise fills it with a DummyStop pipe.
 """
-function clear_expanded_pipes!(pipes_expanded)
+function clear_expanded_pipes!(pipes_expanded::AbstractArray{Pipe,2})
     for x in axes(pipes_expanded, 2)
         for y in axes(pipes_expanded, 1)
             if x % 2 == 0
@@ -317,7 +328,8 @@ a field in the normal pipes array.
 Recreate the main pipe loop in the expanded array.
 Fill any gaps between the now expanded pipes with straight pipe types (N-S, W-E)
 """
-function fill_expanded_pipes(pipes, xs, ys)
+function fill_expanded_pipes(pipes::AbstractArray{Pipe,2},
+    xs::AbstractVector{<:Integer}, ys::AbstractVector{<:Integer})
     pipes_expanded = Array{Pipe,2}(undef, 2 .* size(pipes))
     clear_expanded_pipes!(pipes_expanded)
     for (x, y) in zip(xs, ys)
@@ -364,7 +376,7 @@ If another pipe is encounter check again if this results in being inside or outs
 of the main loop (negate the current `inside` value.)
 Like this we walk each field of the maze to count the number of enclosed fields.
 """
-function count_tiles(pipes_expanded)
+function count_tiles(pipes_expanded::AbstractArray{Pipe,2})
     HEIGHT, WIDTH = size(pipes_expanded)
     count = 0
     inside = false
