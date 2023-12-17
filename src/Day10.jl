@@ -407,7 +407,9 @@ function main(day::Day10{FirstPart{T}}) where {T<:AbstractString}
     data = day.part.data
     pipes, pos = create_pipes(data)
     result = count_loop(pos, pipes)
-    Int(length(result[1][2]) / 2)
+    mazeresult1 = result[1]
+    stepnum = length(mazeresult1.prevs)
+    Int(stepnum / 2)
 end
 
 """
